@@ -4,6 +4,7 @@ class ChessPiece {
         this.light = light; // Color of the piece
         this.dark = !light;
         this.times_moves = 0;
+        this.amount_of_moves = 0;
         this.active = false;
         if (this.light) this.sign = "l";
         else this.sign = "d";
@@ -34,6 +35,7 @@ class ChessPiece {
             this.position.x = x;
             this.position.y = y;
             this.active = false;
+            this.amount_of_moves++;
             game.light_up_spots = []; // Clear light-up-spots
             game.round++; // Up the round count
             game.light_turn = !game.light_turn; // Switch turn
@@ -42,6 +44,26 @@ class ChessPiece {
 
     check_move(x, y, round) {
         console.warn("Not yet implemented for this peice.")
+    }
+
+    check_paths(x, y, paths){
+        var total = [];
+        for(var path of paths){
+            var pos = {x: this.position.x, y: this.position.y};
+            var cache = [];
+            while((pos.x >= 0 && pos.x < 8) && (pos.y >= 0 && pos.y < 8)){
+                // While pos is inside the board
+                pos.x+=path.x;
+                pos.y+=path.y;
+                if(get_peice_at(pos.x, pos.y)) break;
+                cache.push({x: pos.x, y: pos.y});
+            } 
+            total = total.concat(cache);
+        }
+        for(var answ of total){
+            if(answ.x == x && answ.y == y) return true;
+        }
+        return false;
     }
 }
 
@@ -76,30 +98,37 @@ class Queen extends ChessPiece {
     }
 
     check_move(x, y, round) {
-        var checks = [{x: 0,y: 1},{x: 1,y: 1},{x: 1,y: 0},{x: -1,y: 1},{x: -1,y: 0},{x: -1,y: -1},{x: 1,y: -1},{x: 0,y: -1}]
-        var total = [];
-        for(var check of checks){
-            total = total.concat(this.check(check.x, check.y));
-        }
-       
-        for(var answ of total){
-            if(answ.x == x && answ.y == y) return true;
-        }
-        
-        return false;
+        return this.check_paths(x, y, [{x: 0,y: 1},{x: 1,y: 1},{x: 1,y: 0},{x: -1,y: 1},{x: -1,y: 0},{x: -1,y: -1},{x: 1,y: -1},{x: 0,y: -1}]);
+    }
+}
+
+class Rook extends ChessPiece {
+    constructor(x, y, light) {
+        super(x, y, light, "rook");
     }
 
-    check(x, y){
-        var pos = {x: this.position.x, y: this.position.y};
-        var cache = [];
-        while((pos.x > 0 && pos.x < 8) && (pos.y > 0 && pos.y < 8)){
-            // While pos is inside the board
-            pos.x+=x;
-            pos.y+=y;
-            if(get_peice_at(pos.x, pos.y)) return cache;
-            cache.push({x: pos.x, y: pos.y});
-        }
-        return cache;
+    check_move(x, y, round) {
+        return this.check_paths(x, y, [{x: 0, y: 1}, {x: 0, y: -1}, {x: 1, y: 0}, {x: -1, y: 0}]);
+    }
+}
+
+class Bishop extends ChessPiece {
+    constructor(x, y, light) {
+        super(x, y, light, "bishop");
+    }
+
+    check_move(x, y, round) {
+        return this.check_paths(x, y, [{x: 1, y: 1}, {x: -1, y: -1}, {x: 1, y: -1}, {x: -1, y: 1}]);
+    }
+}
+
+class Pawn extends ChessPiece {
+    constructor(x, y, light) {
+        super(x, y, light, "pawn");
+    }
+
+    check_move(x, y, round) {
+        return false;
     }
 }
 
@@ -109,6 +138,8 @@ var mouse_down = false;
 
 reset();
 
+
+    
 function reset() {
     const game_boilerplate = {
         peices: [],
@@ -122,10 +153,20 @@ function reset() {
         game[e] = game_boilerplate[e];
     }
 
-    add_peice(2, 3, true, King);
-    add_peice(4, 4, false, King);
-    add_peice(5, 5, true, Knight)
-    add_peice(7, 6, true, Queen)
+    add_peice(4, 7, true, King);
+    add_peice(3, 7, true, Queen)
+    add_peice(1, 7, true, Knight)
+    add_peice(6, 7, true, Knight)
+    add_peice(0, 7, true, Rook)
+    add_peice(7, 7, true, Rook)
+    add_peice(5, 7, true, Bishop)
+    add_peice(2, 7, true, Bishop)
+
+    for(i = 0; i < 8; i++){
+        add_peice(i, 6, true, Pawn);
+    }
+
+
     draw_board();
 }
 
