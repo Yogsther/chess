@@ -1,9 +1,9 @@
+
 class ChessPiece {
     constructor(x, y, light, name /* Not in the extened classes constructor args! */ ) {
         this.name = name;
         this.light = light; // Color of the piece
         this.dark = !light;
-        this.times_moves = 0;
         this.amount_of_moves = 0;
         this.active = false;
         if (this.light) this.sign = "l";
@@ -23,7 +23,7 @@ class ChessPiece {
 
         this.image = new Image();
         this.image.classList.add("icon");
-        this.image.src = "img/peices/Chess_" + this.name[0] + this.sign + "t60.png";
+        this.image.src = "img/pieces/Chess_" + this.name[0] + this.sign + "t60.png";
     }
 
     get_image() {
@@ -32,12 +32,23 @@ class ChessPiece {
 
     move(x, y) {
         if (this.check_move(x, y)) {
-            if (get_peice_at(x, y)) {
-                if (get_peice_at(x, y).light !== this.light) {
-                    console.log("Delted", game.peices[get_peice_index_at(x, y)])
-                    game.peices.splice(get_peice_index_at(x, y), 1) // Delete peice.
+            if (get_piece_at(x, y)) {
+                if (get_piece_at(x, y).light !== this.light) {
+                    console.log("Delted", game.pieces[get_piece_index_at(x, y)])
+                    game.pieces.splice(get_piece_index_at(x, y), 1) // Delete piece.
                 }
             }
+
+            if(!playing_light){
+                x = 7 - x;
+                y = 7 - y;
+            }
+            socket.emit("move", {
+                id: this.id,
+                x: x,
+                y: y
+            })
+
             this.position.x = x;
             this.position.y = y;
             this.active = false;
@@ -49,7 +60,7 @@ class ChessPiece {
     }
 
     check_move(x, y, round) {
-        console.warn("Not yet implemented for this peice.")
+        console.warn("Not yet implemented for this piece.")
     }
 
     check_paths(x, y, paths) {
@@ -68,8 +79,8 @@ class ChessPiece {
                 // While pos is inside the board
                 pos.x += path.x;
                 pos.y += path.y;
-                if (get_peice_at(pos.x, pos.y)) {
-                    if (get_peice_at(pos.x, pos.y).light !== this.light) cache.push({
+                if (get_piece_at(pos.x, pos.y)) {
+                    if (get_piece_at(pos.x, pos.y).light !== this.light) cache.push({
                         x: pos.x,
                         y: pos.y
                     }); // Make sure to display kills as possible moves.
@@ -193,17 +204,16 @@ class Pawn extends ChessPiece {
         super(x, y, light, "pawn");
     }
 
-    check_move(x, y, round) {
-
+    check_move(x, y, game) {
         if (Math.abs(this.start_position.y - this.position.y) < Math.abs(this.start_position.y - y)) {
             var distance = get_distance(this.position.x, x, this.position.y, y);
 
-            if (distance < 2 && get_color(x, y) === get_color(this.position.x, this.position.y) && get_peice_at(x, y)) {
+            if (distance < 2 && get_color(x, y) === get_color(this.position.x, this.position.y) && get_piece_at(x, y)) {
                 return true;
             }
-            if (this.position.x == x && !get_peice_at(x, y)) {
+            if (this.position.x == x && !get_piece_at(x, y)) {
                 if (this.amount_of_moves === 0) {
-                    if (distance < 3 && !get_peice_at(x, y - y - this.position.y)) return true;
+                    if (distance < 3 && !get_piece_at(x, y - y - this.position.y)) return true;
                 } else {
                     if (distance == 1) {
                         return true;

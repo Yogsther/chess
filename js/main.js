@@ -1,9 +1,31 @@
-var socket = io.connect("localhost:2994");
+var socket = io.connect("10.80.45.44:25565");
 
 var game;
 var playing = false;
+var playing_light = undefined;
 var mouse_down = false;
 
+var pieces = [
+    {
+        name: "n",
+        class: Knight
+    },{
+        name: "queen",
+        class: Queen
+    },{
+        name: "king",
+        class: King
+    }, {
+        name: "pawn",
+        class: Pawn
+    },{
+        name: "rook",
+        class: Rook
+    },{
+        name: "bishop",
+        class: Bishop
+    }
+]
 
 var animation_cycle = 0;
 var animation = setInterval(() => {
@@ -13,7 +35,7 @@ var animation = setInterval(() => {
 
 function reset() {
     const game_boilerplate = {
-        peices: [],
+        pieces: [],
         light_up_spots: [],
         round: 0,
         light_turn: true
@@ -24,17 +46,17 @@ function reset() {
         game[e] = game_boilerplate[e];
     }
 
-    add_peice(4, 7, true, King);
-    add_peice(3, 7, true, Queen)
-    add_peice(1, 7, true, Knight)
-    add_peice(6, 7, true, Knight)
-    add_peice(0, 7, true, Rook)
-    add_peice(7, 7, true, Rook)
-    add_peice(5, 7, true, Bishop)
-    add_peice(2, 7, true, Bishop)
+    add_piece(4, 7, true, King);
+    add_piece(3, 7, true, Queen)
+    add_piece(1, 7, true, Knight)
+    add_piece(6, 7, true, Knight)
+    add_piece(0, 7, true, Rook)
+    add_piece(7, 7, true, Rook)
+    add_piece(5, 7, true, Bishop)
+    add_piece(2, 7, true, Bishop)
 
     for (i = 0; i < 8; i++) {
-        add_peice(i, 6, true, Pawn);
+        add_piece(i, 6, true, Pawn);
     }
 
     draw_board();
@@ -45,22 +67,17 @@ function get_distance(x1, x2, y1, y2) {
 }
 
 
-function add_peice(x, y, light, type) {
-    game.peices.push(new type(x, y, light));
-    game.peices.push(new type(x, 7 - y, !light))
-}
-
-function get_peice_at(x, y) {
-    for (peice of game.peices) {
-        if (peice.position.x === x && peice.position.y === y) return peice;
+function get_piece_at(x, y) {
+    for (piece of game.pieces) {
+        if (piece.position.x === x && piece.position.y === y) return piece;
     }
     return false;
 }
 
-function get_peice_index_at(x, y) {
-    for (var i = 0; i < game.peices.length; i++) {
-        var peice = game.peices[i];
-        if (peice.position.x === x && peice.position.y === y) return i;
+function get_piece_index_at(x, y) {
+    for (var i = 0; i < game.pieces.length; i++) {
+        var piece = game.pieces[i];
+        if (piece.position.x === x && piece.position.y === y) return i;
     }
     return -1;
 }
@@ -70,22 +87,22 @@ function inspect(x, y) {
     x = Math.floor(x / 100);
     y = Math.floor(y / 100);
     var all_deactive = true;
-    for (p of game.peices)
+    for (p of game.pieces)
         if (p.active) all_deactive = false;
     if (all_deactive) game.light_up_spots = []
-    else return; // Don't inspect other peices if one is active.
+    else return; // Don't inspect other pieces if one is active.
 
-    var peice = get_peice_at(x, y);
-    if (peice) {
+    var piece = get_piece_at(x, y);
+    if (piece) {
+        if(piece.light != playing_light) return;
         for (i = 0; i < 64; i++) {
             var x = i % 8;
             var y = Math.floor(i / 8);
-            if (peice.check_move(x, y, game.round)) {
-
-                if (x == peice.position.x && y == peice.position.y) continue;
-                var peice_in_way = get_peice_at(x, y);
-                if (peice_in_way) {
-                    if (peice_in_way.light == peice.light) continue;
+            if (piece.check_move(x, y, game.round)) {
+                if (x == piece.position.x && y == piece.position.y) continue;
+                var piece_in_way = get_piece_at(x, y);
+                if (piece_in_way) {
+                    if (piece_in_way.light == piece.light) continue;
                     else game.light_up_spots.push({
                         x: x,
                         y: y,
@@ -108,13 +125,14 @@ function click(x, y) {
     x = Math.floor(x / 100);
     y = Math.floor(y / 100);
 
-    var peice = get_peice_at(x, y);
-    if (peice.light === game.light_turn) {
-        peice.active = !peice.active;
-        for (p of game.peices)
-            if (p != peice) p.active = false; // Deactivate all other peices - two can't be active at the same time.
+    var piece = get_piece_at(x, y);
+    if (piece.light === game.light_turn) {
+        if(piece.light != playing_light) return;
+        piece.active = !piece.active;
+        for (p of game.pieces)
+            if (p != piece) p.active = false; // Deactivate all other pieces - two can't be active at the same time.
     } else {
-        for (p of game.peices) {
+        for (p of game.pieces) {
             if (p.active) {
 
                 p.move(x, y);
@@ -181,11 +199,11 @@ function draw_board() {
 
         if (get_color(x, y)) bp.classList.add("light");
 
-        var active_peice = false;
-        for (peice of game.peices) {
-            if (peice.active) {
-                active_peice = true;
-                if (peice.position.x == x && peice.position.y == y) {
+        var active_piece = false;
+        for (piece of game.pieces) {
+            if (piece.active) {
+                active_piece = true;
+                if (piece.position.x == x && piece.position.y == y) {
                     bp.classList.add("active");
                 }
             }
@@ -197,20 +215,22 @@ function draw_board() {
                 s.classList.add("light-up");
                 s.setAttribute("style", "background:" + spot.color + "!important;")
                 bp.appendChild(s);
-                if (active_peice) bp.classList.add("occupied")
+                if (active_piece) bp.classList.add("occupied")
             }
         }
 
-        var peice = get_peice_at(x, y);
-        if (peice) {
-            if (peice.last_position.x != peice.position.x && peice.last_position.y != peice.position.y) {
+        var piece = get_piece_at(x, y);
+        if (piece) {
+            if (piece.last_position.x != piece.position.x && piece.last_position.y != piece.position.y) {
                 // Moved last move
 
             }
-            bp.appendChild(peice.get_image());
+
+            bp.appendChild(piece.get_image());
             bp.classList.add("occupied")
         }
         board.appendChild(bp);
     }
 
 }
+
